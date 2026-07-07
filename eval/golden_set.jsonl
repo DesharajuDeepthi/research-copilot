@@ -1,0 +1,30 @@
+{"question": "What is data engineering?", "category": "in_corpus"}
+{"question": "What are the key challenges in data engineering?", "category": "in_corpus"}
+{"question": "How has data engineering evolved as a field?", "category": "in_corpus"}
+{"question": "What is the role of data warehousing in data engineering?", "category": "in_corpus"}
+{"question": "How do data engineers approach query optimization?", "category": "in_corpus"}
+{"question": "What are common data engineering architecture patterns?", "category": "in_corpus"}
+{"question": "What is the relationship between data engineering and data science?", "category": "in_corpus"}
+{"question": "What are best practices for data pipeline design?", "category": "in_corpus"}
+{"question": "How is data quality managed in data engineering systems?", "category": "in_corpus"}
+{"question": "What are the main components of a data engineering system?", "category": "in_corpus"}
+{"question": "What methodologies exist for collecting valid software engineering data?", "category": "in_corpus"}
+{"question": "How is fuzzy logic applied in engineering systems?", "category": "in_corpus"}
+{"question": "What is data-driven science and engineering?", "category": "in_corpus"}
+{"question": "How does active learning affect student performance in STEM fields?", "category": "in_corpus"}
+{"question": "What topics are typically covered at data engineering conferences?", "category": "in_corpus"}
+{"question": "How do modern data mesh architectures decentralize data ownership across domains?", "category": "adversarial"}
+{"question": "What techniques do vector databases use to support retrieval-augmented generation pipelines?", "category": "adversarial"}
+{"question": "How does dbt implement testing and lineage tracking for analytics engineering workflows?", "category": "adversarial"}
+{"question": "What are the trade-offs between Lambda and Kappa architectures for real-time streaming data pipelines?", "category": "adversarial"}
+{"question": "How do feature stores manage point-in-time correctness for machine learning training data?", "category": "adversarial"}
+{"question": "How do orchestration tools like Airflow manage complex data pipeline dependencies?", "category": "adversarial"}
+{"question": "What are the core principles behind the medallion bronze silver gold data architecture pattern?", "category": "adversarial"}
+{"question": "How does change data capture enable real-time data synchronization between systems?", "category": "adversarial"}
+{"question": "What role does Apache Kafka play in event-driven data architectures?", "category": "adversarial"}
+{"question": "How do data contracts help enforce schema stability between producers and consumers?", "category": "adversarial"}
+{"question": "What techniques are used for data deduplication in large-scale ETL pipelines?", "category": "adversarial"}
+{"question": "How does dimensional modeling differ from data vault modeling in warehouse design?", "category": "adversarial"}
+{"question": "What are the challenges of maintaining idempotency in streaming data pipelines?", "category": "adversarial"}
+{"question": "How do reverse ETL tools sync data from warehouses back into operational systems?", "category": "adversarial"}
+{"question": "What is the role of a semantic layer in modern data stack architectures?", "category": "adversarial"}

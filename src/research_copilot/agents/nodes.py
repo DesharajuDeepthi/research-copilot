@@ -11,7 +11,11 @@ SYNTHESIS_SYSTEM_PROMPT = (
     "You are a research assistant that answers questions using only the provided context. "
     "You must cite the paper title and OpenAlex ID for every claim, in the form "
     "(Title, openalex_id). Do not use knowledge outside the provided context, and do not "
-    "hallucinate facts, papers, or citations that are not present in the context."
+    "hallucinate facts, papers, or citations that are not present in the context.\n\n"
+    "The provided context may only partially cover the question. If so, answer only the "
+    "parts that are directly supported by the context, and explicitly state which aspects "
+    "of the question the sources do not address. A partial, honest answer is strongly "
+    "preferred over a complete-sounding one that goes beyond what the sources actually say."
 )
 
 _retriever: HybridRetriever | None = None
@@ -60,11 +64,16 @@ def live_api_fallback(state: dict) -> dict:
     papers = search_live(query, per_page=5)
     new_docs = prepare_documents(papers)
 
+    # Fallback docs get graded the same as normal retrieval — otherwise thin,
+    # loosely-related live results get fed straight to synthesize unfiltered.
+    relevant_new_docs = grade_documents(query, new_docs)
+
     retrieved_docs = state.get("retrieved_docs", []) + new_docs
-    graded_docs = state.get("graded_docs", []) + new_docs
+    graded_docs = state.get("graded_docs", []) + relevant_new_docs
 
     trace = state.get("agent_trace", []) + [
-        f"Live API fallback triggered — fetched {len(new_docs)} fresh papers from OpenAlex"
+        f"Live API fallback triggered — fetched {len(new_docs)} fresh papers from OpenAlex, "
+        f"{len(relevant_new_docs)} relevant after grading"
     ]
     return {
         "retrieved_docs": retrieved_docs,
@@ -76,6 +85,17 @@ def live_api_fallback(state: dict) -> dict:
 
 def synthesize(state: dict) -> dict:
     docs = state["graded_docs"]
+
+    if not docs:
+        trace = state.get("agent_trace", []) + [
+            "synthesize: no relevant context available, skipping generation"
+        ]
+        return {
+            "generation": "I don't have enough relevant information in the retrieved sources to answer this question.",
+            "citations": [],
+            "agent_trace": trace,
+        }
+
     context = "\n\n".join(
         f"[{i}] Title: {doc.get('metadata', {}).get('title')}\n"
         f"OpenAlex ID: {doc.get('metadata', {}).get('openalex_id')}\n"
@@ -102,6 +122,15 @@ def synthesize(state: dict) -> dict:
 
 
 def check_grounding(state: dict) -> dict:
+    if not state["graded_docs"]:
+        # No context means no claims to have hallucinated -- an honest refusal is
+        # trivially grounded, and asking an LLM to judge it against nothing invites
+        # a nonsensical "unsupported" verdict.
+        trace = state.get("agent_trace", []) + [
+            "check_grounding: PASSED (no context, refusal has no claims to verify)"
+        ]
+        return {"grounding_passed": True, "agent_trace": trace}
+
     result = check_grounding_llm(state["generation"], state["graded_docs"])
     grounded = result["grounded"]
     unsupported_claims = result["unsupported_claims"]

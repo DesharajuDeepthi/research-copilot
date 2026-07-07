@@ -1,8 +1,12 @@
+import time
+
 import httpx
 
 from research_copilot.config import settings
 
 OPENALEX_WORKS_URL = "https://api.openalex.org/works"
+MAX_RETRIES = 3
+RETRY_BACKOFF_SECONDS = 2
 SELECT_FIELDS = ",".join(
     [
         "id",
@@ -45,14 +49,43 @@ def _parse_work(work: dict) -> dict:
     }
 
 
+def _is_transient_error(response: httpx.Response) -> bool:
+    if response.status_code == 429 or response.status_code >= 500:
+        return True
+    if response.status_code == 400:
+        try:
+            return "temporarily unavailable" in response.json().get("error", "").lower()
+        except ValueError:
+            return False
+    return False
+
+
+def _get_with_retry(client: httpx.Client, params: dict, headers: dict) -> dict:
+    last_error: Exception | None = None
+
+    for attempt in range(MAX_RETRIES):
+        response = client.get(OPENALEX_WORKS_URL, params=params, headers=headers)
+        try:
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPStatusError as error:
+            if not _is_transient_error(response) or attempt == MAX_RETRIES - 1:
+                raise
+            last_error = error
+            time.sleep(RETRY_BACKOFF_SECONDS * (2**attempt))
+
+    raise last_error  # pragma: no cover - unreachable, loop always returns or raises
+
+
 def search_live(query: str, per_page: int = 5) -> list[dict]:
+    # OpenAlex's `search` param treats "?" and "*" as wildcard operators requiring
+    # search.exact mode; natural-language questions routinely end in "?", so strip them.
+    sanitized_query = query.replace("?", "").replace("*", "")
     headers = {"User-Agent": f"research-copilot/1.0 (mailto:{settings.OPENALEX_EMAIL})"}
-    params = {"search": query, "per_page": per_page}
+    params = {"search": sanitized_query, "per_page": per_page}
 
     with httpx.Client(timeout=10) as client:
-        response = client.get(OPENALEX_WORKS_URL, params=params, headers=headers)
-        response.raise_for_status()
-        data = response.json()
+        data = _get_with_retry(client, params, headers)
 
     return [
         _parse_work(work)
@@ -77,9 +110,7 @@ def fetch_papers(topics: list[str], max_per_topic: int = 500) -> list[dict]:
                     "cursor": cursor,
                     "per-page": min(200, max_per_topic - fetched),
                 }
-                response = client.get(OPENALEX_WORKS_URL, params=params, headers=headers)
-                response.raise_for_status()
-                data = response.json()
+                data = _get_with_retry(client, params, headers)
 
                 for work in data.get("results", []):
                     abstract_inverted_index = work.get("abstract_inverted_index")
